@@ -1,5 +1,6 @@
 require "raspy/version"
 require "raspy/error"
+require "rusql"
 
 class ActiveRecord::Base
   def self.as_rusql_table
