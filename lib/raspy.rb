@@ -15,17 +15,8 @@ class ActiveRecord::Base
   end
 end
 
-class Array
-  def prefetch(args)
-    return if args.keys.length == 0
-
-    raise Raspy::Error.new("Cannot run prefetch on a non-uniform list") unless self.map(&:class).uniq.length == 1
-  end
-end
-
 module Raspy
   extend Rusql
-
 
   def self.preload_habtm(list:, name:, association_klass:, foreign_key:, association_foreign_key:, inner_associations:, join_table:, association_condition:)
     return if list.nil? || list.length == 0
@@ -245,6 +236,73 @@ module Raspy
         association_klass: association_klass,
         foreign_key:       polymorphic_key_field
       )
+    end
+  end
+end
+
+class Array
+  def prefetch(args)
+    return if args.keys.length == 0
+
+    args.each_pair do |name, details|
+      raise Raspy::Error.new("Incomplete relation details for '#{name}'") unless \
+        details.is_a?(Hash) \
+        && details[:type].present?
+
+      case details[:type]
+      when :belongs_to, "belongs_to"
+        Raspy.preload_belongs_to(
+          list:                     self,
+          name:                     name,
+          association_klass:        details[:klass],
+          foreign_key:              details[:foreign_key],
+          inner_associations:       details[:associations],
+          additional_selects:       details[:additional_selects] || [],
+          additional_joins:         details[:additional_joins] || [],
+          association_condition:    details[:association_condition]
+        )
+      when :polymorphic_belongs_to, "polymorphic_belongs_to"
+        Raspy.preload_polymorphic_belongs_to(
+          list:                     self,
+          name:                     name,
+          polymorphic_key_field:    details[:polymorphic_key_field],
+          polymorphic_type_field:   details[:polymorphic_type_field],
+          polymorphic_type_map:     details[:polymorphic_type_map]
+        )
+      when :has_one, "has_one"
+        Raspy.preload_has_one(
+          list:                     self,
+          name:                     name,
+          association_klass:        details[:klass],
+          foreign_key:              details[:foreign_key],
+          order_type:               details[:order_type],
+          order_field:              details[:order_field],
+          inner_associations:       details[:associations],
+          association_condition:    details[:association_condition],
+          reverse_association:      details[:reverse_association]
+        )
+      when :has_many, "has_many"
+        Raspy.preload_has_many(
+          list:                     self,
+          name:                     name,
+          association_klass:        details[:klass],
+          foreign_key:              details[:foreign_key],
+          inner_associations:       details[:associations],
+          association_condition:    details[:association_condition],
+          reverse_association:      details[:reverse_association]
+      )
+      when :has_and_belongs_to_many, "has_and_belongs_to_many"
+        Raspy.preload_habtm(
+          list:                     self,
+          name:                     name,
+          association_klass:        details[:klass],
+          foreign_key:              details[:foreign_key],
+          association_foreign_key:  details[:association_foreign_key],
+          inner_associations:       details[:associations],
+          join_table:               details[:join_table],
+          association_condition:    details[:association_condition]
+        )
+      end
     end
   end
 end
