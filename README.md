@@ -1,8 +1,6 @@
 # Raspy
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/raspy`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
+Raspy provides an alternative to define and prefetch associations or relations between ActiveRecord models.
 
 ## Installation
 
@@ -22,7 +20,68 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+Here is a simple example:
+
+```ruby
+class User < ActiveRecord::Base
+  include Rusql
+  
+  def permissions
+    query = select( distinct( Permission[:name] ) ).
+    from( Permission ).
+    left_outer_join( user_permissions, user_permissions[:permission_id].equals( Permission[:id] ) ).
+    left_outer_join( User, User[:id].equals( user_permissions[:user_id] ) ).
+    where( User[:id].equals(self.id) )
+    
+    Permission.find_by_sql( query.to_s )
+  end
+end
+```
+
+Here is an advanced example:
+
+
+```ruby
+class User < ActiveRecord::Base
+  extend Rusql
+  
+  def self.additional_selects
+    [
+        group_concat( distinct( Permission[:name] ) ).as( :permission_string_list )
+    ]
+  end
+  
+  def self.additional_joins
+    user_permissions = table(:user_permissions)
+    
+    [
+        left_outer_join( user_permissions, user_permissions[:user_id].equals( User[:id] ),
+        left_outer_join( Permission,       Permission[:id].equals( user_permissions[:permission_id] )
+    ]
+  end
+  
+  def permissions
+    self.permission_string_list.split(",")
+  end
+  
+  def self.fetch(id:)
+    selects = [ User[:*].as_selector ]
+    selects += User.additional_selects
+    
+    
+    query = select( selects ).
+        from( User ).
+        where( User[:id].equals(id) ).
+        limit( 1 )
+        
+    User.additional_joins.each do |j|
+        query = query.join( j )
+    end
+    
+    User.find_by_sql(query.to_s).first
+  end
+end
+```
 
 ## Contributing
 
