@@ -27,6 +27,8 @@ class User < ActiveRecord::Base
   include Rusql
   
   def permissions
+    user_permissions = table(:user_permissions)
+    
     query = select( distinct( Permission[:name] ) ).
     from( Permission ).
     left_outer_join( user_permissions, user_permissions[:permission_id].equals( Permission[:id] ) ).
