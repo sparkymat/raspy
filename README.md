@@ -20,7 +20,7 @@ Or install it yourself as:
 
 ## Usage
 
-Here is a simple example:
+Here is a simple example of using the SQL DSL:
 
 ```ruby
 class User < ActiveRecord::Base
@@ -38,7 +38,7 @@ class User < ActiveRecord::Base
 end
 ```
 
-Here is an advanced example:
+Here is an advanced example of using the SQL DSL:
 
 
 ```ruby
@@ -81,6 +81,23 @@ class User < ActiveRecord::Base
     User.find_by_sql(query.to_s).first
   end
 end
+```
+
+Here's an example for the prefetch
+
+```ruby
+users = User.all.to_a
+
+[users].prefetch({
+  permissions: {
+    type: "has_and_belongs_to_many",
+    klass: Permission,
+    foreign_key: "user_id",
+    association_foreign_key: "permission_id",
+    join_table: "user_permissions",
+    association_condition: Permission[:deleted].equals("F")
+  }
+})
 ```
 
 ## Contributing
